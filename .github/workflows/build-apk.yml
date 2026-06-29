@@ -37,8 +37,14 @@ jobs:
             exit 1
           fi
           
-          echo "Extracting source code..."
-          unzip -o source.zip -d .
+          # Detect where the Flutter project is located
+          TARGET_DIR="."
+          if [ -d "frontend" ]; then
+            TARGET_DIR="frontend"
+          fi
+          
+          echo "Extracting source code into: $TARGET_DIR"
+          unzip -o source.zip -d "$TARGET_DIR"
           rm source.zip
           echo "Source code successfully extracted!"
 
