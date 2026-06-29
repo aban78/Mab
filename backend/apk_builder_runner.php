@@ -378,7 +378,9 @@ function run_github_build($mode, $target, $frontend_dir, $output_file, $status_f
         exit();
     }
     
-    $base_url = rtrim(SHARED_HOSTING_URL, '/') . '/';
+    global $config;
+    $base_url = isset($config['shared_hosting_url']) ? $config['shared_hosting_url'] : SHARED_HOSTING_URL;
+    $base_url = rtrim($base_url, '/') . '/';
     $zip_url = $base_url . 'uploads/' . $zip_filename;
     
     file_put_contents($output_file, "Triggering GitHub Actions build...\n", FILE_APPEND);
@@ -394,6 +396,13 @@ function run_github_build($mode, $target, $frontend_dir, $output_file, $status_f
         exit();
     }
     
+    $workspace_name = basename($workspace_dir);
+    $clean_name = preg_replace('/[^a-zA-Z0-9_]/', '', strtolower($workspace_name));
+    if (empty($clean_name)) {
+        $clean_name = "app_" . time();
+    }
+    $package_name = "com.example." . $clean_name;
+
     $dispatch_url = "https://api.github.com/repos/$repo/actions/workflows/$workflow/dispatches";
     $dispatch_data = array(
         'ref' => 'main',
@@ -401,7 +410,8 @@ function run_github_build($mode, $target, $frontend_dir, $output_file, $status_f
             'zip_url' => $zip_url,
             'build_mode' => $mode,
             'target' => $target,
-            'build_id' => $build_id
+            'build_id' => $build_id,
+            'package_name' => $package_name
         )
     );
     
