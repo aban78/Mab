@@ -17,6 +17,15 @@ on:
       build_id:
         description: 'Unique Build ID for verification'
         required: false
+      package_name:
+        description: 'Custom Android Package Name (Application ID)'
+        required: false
+<<<<<<< HEAD
+      app_name:
+        description: 'Custom App Name (Label)'
+        required: false
+=======
+>>>>>>> 5d4595fadd3034665b2b755e469c7cb77a3dbd9c
 
 jobs:
   build:
@@ -47,6 +56,55 @@ jobs:
           unzip -o source.zip -d "$TARGET_DIR"
           rm source.zip
           echo "Source code successfully extracted!"
+
+<<<<<<< HEAD
+      - name: Customize App Identity
+        run: |
+          PACKAGE_NAME="${{ github.event.inputs.package_name }}"
+          APP_NAME="${{ github.event.inputs.app_name }}"
+          DIRS=". frontend"
+          for dir in $DIRS; do
+            if [ -d "$dir" ]; then
+              # Update Package ID (Application ID)
+              if [ -n "$PACKAGE_NAME" ]; then
+                echo "Setting Application ID to $PACKAGE_NAME in $dir"
+                if [ -f "$dir/android/app/build.gradle.kts" ]; then
+                  sed -i "s/applicationId = \".*\"/applicationId = \"$PACKAGE_NAME\"/g" "$dir/android/app/build.gradle.kts"
+                fi
+                if [ -f "$dir/android/app/build.gradle" ]; then
+                  sed -i "s/applicationId \".*\"/applicationId \"$PACKAGE_NAME\"/g" "$dir/android/app/build.gradle"
+                fi
+              fi
+              # Update App Name (Label)
+              if [ -n "$APP_NAME" ]; then
+                echo "Setting App Label to $APP_NAME in $dir"
+                if [ -f "$dir/android/app/src/main/AndroidManifest.xml" ]; then
+                  sed -i "s/android:label=\"[^\"]*\"/android:label=\"$APP_NAME\"/g" "$dir/android/app/src/main/AndroidManifest.xml"
+                fi
+              fi
+            fi
+          done
+=======
+      - name: Customize Package Name
+        run: |
+          PACKAGE_NAME="${{ github.event.inputs.package_name }}"
+          if [ -n "$PACKAGE_NAME" ]; then
+            echo "Setting Application ID to $PACKAGE_NAME"
+            DIRS=". frontend"
+            for dir in $DIRS; do
+              if [ -d "$dir" ]; then
+                if [ -f "$dir/android/app/build.gradle.kts" ]; then
+                  echo "Updating $dir/android/app/build.gradle.kts"
+                  sed -i "s/applicationId = \".*\"/applicationId = \"$PACKAGE_NAME\"/g" "$dir/android/app/build.gradle.kts"
+                fi
+                if [ -f "$dir/android/app/build.gradle" ]; then
+                  echo "Updating $dir/android/app/build.gradle"
+                  sed -i "s/applicationId \".*\"/applicationId \"$PACKAGE_NAME\"/g" "$dir/android/app/build.gradle"
+                fi
+              fi
+            done
+          fi
+>>>>>>> 5d4595fadd3034665b2b755e469c7cb77a3dbd9c
 
       - name: Set up Java
         uses: actions/setup-java@v3

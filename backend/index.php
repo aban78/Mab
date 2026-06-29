@@ -2252,7 +2252,7 @@
                         <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--text-primary);">
                             <i class="fa-solid fa-file-export" style="color: #10b981; margin-right: 6px;"></i> ${apk}
                         </span>
-                        <a href="api.php?action=apk_build_download&file=${encodeURIComponent(apk)}" class="btn btn-primary" style="padding: 4px 10px; font-size: 0.8rem; background: linear-gradient(135deg, #10b981, #059669); border: none; height: auto;">
+                        <a href="api.php?action=apk_build_download&file=${encodeURIComponent(apk)}&workspace_path=${encodeURIComponent(activeWorkspacePath)}" class="btn btn-primary" style="padding: 4px 10px; font-size: 0.8rem; background: linear-gradient(135deg, #10b981, #059669); border: none; height: auto;">
                             <i class="fa-solid fa-download"></i> Download
                         </a>
                     `;

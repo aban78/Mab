@@ -324,10 +324,20 @@ switch ($action) {
         $messages = isset($input['messages']) ? $input['messages'] : array();
         
         // Dynamic Key checking (falls back to config if request header or post keys are not set)
-        $headers = getallheaders();
-        $gemini_key = isset($headers['X-Gemini-Key']) ? $headers['X-Gemini-Key'] : (isset($input['gemini_key']) ? $input['gemini_key'] : (defined('GEMINI_API_KEY') ? GEMINI_API_KEY : ''));
-        $claude_key = isset($headers['X-Claude-Key']) ? $headers['X-Claude-Key'] : (isset($input['claude_key']) ? $input['claude_key'] : (defined('CLAUDE_API_KEY') ? CLAUDE_API_KEY : ''));
-        $chatgpt_key = isset($headers['X-ChatGPT-Key']) ? $headers['X-ChatGPT-Key'] : (isset($input['chatgpt_key']) ? $input['chatgpt_key'] : (defined('OPENAI_API_KEY') ? OPENAI_API_KEY : ''));
+        $gemini_key = cursor_get_header('X-Gemini-Key');
+        if (empty($gemini_key)) {
+            $gemini_key = isset($input['gemini_key']) ? $input['gemini_key'] : (defined('GEMINI_API_KEY') ? GEMINI_API_KEY : '');
+        }
+        
+        $claude_key = cursor_get_header('X-Claude-Key');
+        if (empty($claude_key)) {
+            $claude_key = isset($input['claude_key']) ? $input['claude_key'] : (defined('CLAUDE_API_KEY') ? CLAUDE_API_KEY : '');
+        }
+        
+        $chatgpt_key = cursor_get_header('X-ChatGPT-Key');
+        if (empty($chatgpt_key)) {
+            $chatgpt_key = isset($input['chatgpt_key']) ? $input['chatgpt_key'] : (defined('OPENAI_API_KEY') ? OPENAI_API_KEY : '');
+        }
 
         // Normalize messages to system and user format
         if (empty($messages)) {
@@ -428,7 +438,7 @@ switch ($action) {
                 )
             );
             
-            $system_prompt = "You are an autonomous AI coding agent. You can read/write files and run terminal commands to modify the workspace, compile code, and run tests. Use these tools to complete the user's request. If the user asks you to create a simple app, you must create a fully functional Flutter application in the workspace. You should first run the command `flutter create --platforms=android .` in the workspace using the `run_command` tool to automatically generate all required Android build documents, folders, and build configurations (such as pubspec.yaml, the android folder, and gradle configurations) rather than writing these complex configuration files manually. After running `flutter create`, you can edit and replace `lib/main.dart` and other files to build the simple app requested. If you edit files, ensure they have valid syntax by testing them. When you are completely done, provide a summary of the actions you took and the results.";
+            $system_prompt = "You are an autonomous AI coding agent. You can read/write files and run terminal commands to modify the workspace. The server you are running on might NOT have the `flutter` SDK installed locally. Do NOT attempt to run any `flutter` commands (such as `flutter create`, `flutter build`, or `flutter pub get`) as they will fail. Instead, check the workspace: there is already a pre-initialized Flutter project template in the workspace (usually in a folder named `frontend` or directly in the root, containing a `pubspec.yaml`). Your job is simply to write or modify the Dart code in `lib/main.dart` (e.g., `frontend/lib/main.dart`) and update dependencies in `pubspec.yaml` using the `write_file` tool. Do NOT try to compile the app. The backend will handle compiling the APK in the cloud via GitHub Actions. Focus entirely on writing clean, functional Flutter/Dart code in the files.";
             
             $max_turns = 10;
             $final_reply = '';
@@ -891,7 +901,8 @@ switch ($action) {
             'target' => isset($input['target']) ? $input['target'] : 'fat',
             'obfuscate' => !empty($input['obfuscate']),
             'clean' => !empty($input['clean']),
-            'workspace_dir' => WORKSPACE_DIR
+            'workspace_dir' => WORKSPACE_DIR,
+            'shared_hosting_url' => SHARED_HOSTING_URL
         );
         file_put_contents(__DIR__ . '/.apk_build_config.json', json_encode($config));
 
