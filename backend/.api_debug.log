@@ -1,0 +1,18 @@
+--- 2026-06-27 13:20:39 ---
+Original Command: "D:\flutter\bin\flutter.bat" create --platforms=android .
+Flutter Bin: D:\flutter\bin
+Modified Command: "D:\"D:\flutter\bin\flutter.bat"\bin\"D:\flutter\bin\flutter.bat".bat" create --platforms=android .
+Exit Code: 1
+Stdout: 
+Stderr: The filename, directory name, or volume label syntax is incorrect.
+
+
+--- 2026-06-27 13:20:41 ---
+Original Command: "D:\flutter\bin\flutter.bat" create --platforms=android hello_world_app
+Flutter Bin: D:\flutter\bin
+Modified Command: "D:\"D:\flutter\bin\flutter.bat"\bin\"D:\flutter\bin\flutter.bat".bat" create --platforms=android hello_world_app
+Exit Code: 1
+Stdout: 
+Stderr: The filename, directory name, or volume label syntax is incorrect.
+
+

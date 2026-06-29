@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lottery Machine with Drop Zone</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #0f1016;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+        }
+
+        /* Main layout transition containers */
+        #rack-scene {
+            transition: opacity 1s ease, transform 1s ease;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+        }
+
+        #drum-scene {
+            display: none;
+            opacity: 0;
+            transition: opacity 2s ease;
+            width: 100%;
+            height: 100vh;
+            justify-content: center;
+            align-items: center;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .machine-container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            background: linear-gradient(to bottom, #111, #222);
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 50px 100px rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            perspective: 1000px;
+        }
+
+        .machine-container::before,
+        .machine-container::after {
+            content: '';
+            position: absolute;
+            top: 50px;
+            width: 100px;
+            height: 80%;
+            background: #111;
+            z-index: -1;
+        }
+
+        .machine-container::before {
+            left: -80px;
+            transform: skewY(10deg);
+        }
+
+        .machine-container::after {
+            right: -80px;
+            transform: skewY(-10deg);
+        }
+
+        .rack {
+            display: flex;
+            justify-content: space-between;
+            height: 80%;
+            position: relative;
+            padding: 0 20px;
+            border-bottom: none;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px 10px 0 0;
+            overflow: hidden;
+        }
+
+        .column {
+            flex: 1;
+            display: flex;
+            flex-direction: column-reverse;
+            align-items: center;
+            padding-bottom: 5px;
+            position: relative;
+            border-right: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .column:last-child {
+            border-right: none;
+        }
+
+        .ball {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 2px;
+            position: relative;
+            box-shadow:
+                inset -5px -5px 12px rgba(0, 0, 0, 0.6),
+                inset 5px 5px 12px rgba(255, 255, 255, 0.4),
+                2px 5px 5px rgba(0, 0, 0, 0.3);
+            transform: rotate(-10deg);
+        }
+
+        .ball span {
+            display: block;
+            transform: rotate(10deg);
+        }
+
+        /* Ball Colors */
+        .ball.purple,
+        .drum-ball.purple,
+        .drop-ball.purple {
+            background: radial-gradient(circle at 35% 35%, #d187f5, #9b59b6, #5e2a75);
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .ball.yellow,
+        .drum-ball.yellow,
+        .drop-ball.yellow {
+            background: radial-gradient(circle at 35% 35%, #fff59d, #f1c40f, #f39c12);
+            color: #333;
+        }
+
+        .ball.green,
+        .drum-ball.green,
+        .drop-ball.green {
+            background: radial-gradient(circle at 35% 35%, #88f7b5, #2ecc71, #1e8449);
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .ball.pink,
+        .drum-ball.pink,
+        .drop-ball.pink {
+            background: radial-gradient(circle at 35% 35%, #ff80ab, #e91e63, #880e4f);
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .ball.blue,
+        .drum-ball.blue,
+        .drop-ball.blue {
+            background: radial-gradient(circle at 35% 35%, #85c1e9, #3498db, #1f618d);
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .ball.white,
+        .drum-ball.white,
+        .drop-ball.white {
+            background: radial-gradient(circle at 35% 35%, #ffffff, #ecf0f1, #bdc3c7);
+            color: #333;
+        }
+
+        .bottom-section {
+            height: 20%;
+            position: relative;
+            margin-top: -10px;
+            overflow: hidden;
+        }
+
+        .curve-track {
+            width: 120%;
+            height: 200px;
+            background: #000;
+            border-radius: 0 0 50% 50%;
+            position: absolute;
+            top: -20px;
+            left: -10%;
+            box-shadow: inset 0 -10px 20px rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            border-top: 5px solid #444;
+        }
+
+        .glow-line {
+            position: absolute;
+            top: 10px;
+            width: 80%;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            filter: blur(4px);
+        }
+
+        .glass-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to right,
+                    rgba(255, 255, 255, 0.05) 0%,
+                    rgba(255, 255, 255, 0) 20%,
+                    rgba(255, 255, 255, 0) 80%,
+                    rgba(255, 255, 255, 0.05) 100%);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        @keyframes dropIn {
+            0% {
+                transform: translateY(-300px) rotate(0deg);
+                opacity: 0;
+            }
+
+            60% {
+                transform: translateY(20px) rotate(10deg);
+                opacity: 1;
+            }
+
+            80% {
+                transform: translateY(-10px) rotate(-5deg);
+            }
+
+            100% {
+                transform: translateY(0) rotate(-10deg);
+            }
+        }
+
+        @keyframes dropDown {
+            0% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(800px);
+                opacity: 0;
+            }
+        }
+
+        /* DRUM STYLES */
+        .drum-container {
+            position: relative;
+            width: 600px;
+            height: 700px;
+        }
+
+        .drum-glass {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 600px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01) 60%, rgba(0, 0, 0, 0.8) 100%);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            box-shadow:
+                inset 0 0 50px rgba(0, 0, 0, 0.8),
+                0 0 30px rgba(0, 100, 255, 0.1);
+            z-index: 10;
+            overflow: hidden;
+        }
+
+        .neon-ring {
+            position: absolute;
+            top: 50px;
+            left: 50px;
+            width: 500px;
+            height: 500px;
+            border-radius: 50%;
+            border: 15px solid rgba(255, 255, 255, 0.9);
+            box-shadow:
+                0 0 20px rgba(0, 150, 255, 0.8),
+                0 0 50px rgba(0, 150, 255, 0.4),
+                inset 0 0 30px rgba(0, 150, 255, 0.4);
+            z-index: 1;
+        }
+
+        .agitator {
+            position: absolute;
+            top: 300px;
+            left: 300px;
+            width: 0;
+            height: 0;
+            z-index: 5;
+        }
+
+        .agitator-arm {
+            position: absolute;
+            bottom: 0;
+            left: -5px;
+            width: 10px;
+            height: 240px;
+            background: linear-gradient(90deg, #ccc, #fff, #999);
+            transform-origin: bottom center;
+            border-radius: 5px 5px 0 0;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .agitator-arm::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -15px;
+            width: 40px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 5px;
+        }
+
+        .center-cap {
+            position: absolute;
+            top: 300px;
+            left: 300px;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle, #fff, #999);
+            border-radius: 50%;
+            z-index: 6;
+            box-shadow: 0 5px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .drum-ball {
+            position: absolute;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 18px;
+            z-index: 2;
+            transition: transform 0.2s linear;
+            box-shadow: inset -5px -5px 12px rgba(0, 0, 0, 0.6), inset 5px 5px 12px rgba(255, 255, 255, 0.4);
+        }
+
+        .drum-ball span {
+            display: block;
+        }
+
+        #drum-balls-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        /* --- NEW MACHINE BASE STYLES --- */
+        .machine-base {
+            position: absolute;
+            bottom: -85px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 1000px;
+            height: 250px;
+            z-index: 20;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            padding-bottom: 20px;
+            font-family: 'Arial', sans-serif;
+            pointer-events: none;
+        }
+
+        .center-structure {
+            width: 160px;
+            height: 200px;
+            position: relative;
+            z-index: 30;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+        }
+
+        .center-pillar {
+            width: 100%;
+            height: 120px;
+            background: linear-gradient(135deg, #1f1f2b 0%, #111 100%);
+            clip-path: polygon(15% 0, 85% 0, 100% 100%, 0% 100%);
+            box-shadow:
+                0 0 30px rgba(0, 0, 0, 0.9),
+                inset 0 2px 5px rgba(255, 255, 255, 0.1);
+            position: relative;
+        }
+
+        .chute-opening {
+            position: absolute;
+            top: 20px;
+            width: 90px;
+            height: 80px;
+            background: linear-gradient(to right, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.1) 50%, rgba(255, 255, 255, 0.05));
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-bottom: none;
+            border-radius: 10px 10px 0 0;
+            backdrop-filter: blur(4px);
+            z-index: 2;
+        }
+
+        /* WINGS */
+        .base-wing {
+            height: 140px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .base-wing.left {
+            width: 480px;
+            margin-right: -20px;
+            background: linear-gradient(90deg, #1a1a24 0%, #252530 100%);
+            justify-content: flex-end;
+            padding-right: 40px;
+            clip-path: polygon(0 0, 100% 0, 100% 100%, 0 85%);
+            border-top-left-radius: 4px;
+        }
+
+        .base-wing.right {
+            width: 250px;
+            margin-left: -20px;
+            background: linear-gradient(90deg, #252530 0%, #1a1a24 100%);
+            justify-content: flex-start;
+            padding-left: 40px;
+            clip-path: polygon(0 0, 100% 0, 100% 85%, 0 100%);
+            border-top-right-radius: 4px;
+        }
+
+        /* TRACKS */
+        .ball-track {
+            position: relative;
+            height: 80px;
+            background: #000;
+            border-radius: 40px;
+            box-shadow: inset 0 5px 20px rgba(0, 0, 0, 1), 0 1px 0 rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            padding: 0 15px;
+        }
+
+        .base-wing.left .ball-track {
+            width: 92%;
+            justify-content: flex-end;
+            padding-right: 15px;
+        }
+
+        .base-wing.right .ball-track {
+            width: 85%;
+            justify-content: flex-start;
+            padding-left: 15px;
+        }
+
+        .track-glow {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 60%;
+            background: linear-gradient(to top, rgba(0, 140, 255, 0.4) 0%, transparent 80%);
+            border-bottom: 3px solid #00aaff;
+            box-shadow: 0 0 20px rgba(0, 140, 255, 0.5);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* DROPPED BALLS */
+        .dropped-ball {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 24px;
+            margin: 0 4px;
+            position: relative;
+            z-index: 10;
+            opacity: 0;
+            transform: translateY(-80px) scale(0.5);
+            box-shadow:
+                0 5px 15px rgba(0, 0, 0, 0.6),
+                inset -5px -5px 10px rgba(0, 0, 0, 0.4),
+                inset 5px 5px 10px rgba(255, 255, 255, 0.3);
+            animation: bounceIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        .dropped-ball span {
+            z-index: 2;
+            position: relative;
+        }
+
+        @keyframes bounceIn {
+            0% {
+                opacity: 0;
+                transform: translateY(-100px) scale(0.5) rotate(0deg);
+            }
+
+            60% {
+                opacity: 1;
+                transform: translateY(10px) scale(1.1) rotate(180deg);
+            }
+
+            80% {
+                transform: translateY(-5px) scale(0.95) rotate(200deg);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1) rotate(220deg);
+            }
+        }
+
+        /* Ball Color Classes for Dropped Balls */
+        .dropped-ball.purple {
+            background: radial-gradient(circle at 35% 35%, #d187f5, #9b59b6, #5e2a75);
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .dropped-ball.yellow {
+            background: radial-gradient(circle at 35% 35%, #fff59d, #f1c40f, #d68910);
+            color: #333;
+        }
+
+        .dropped-ball.green {
+            background: radial-gradient(circle at 35% 35%, #88f7b5, #2ecc71, #1e8449);
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .dropped-ball.pink {
+            background: radial-gradient(circle at 35% 35%, #ff80ab, #e91e63, #880e4f);
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .dropped-ball.blue {
+            background: radial-gradient(circle at 35% 35%, #85c1e9, #3498db, #1f618d);
+            color: #fff;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        .dropped-ball.white {
+            background: radial-gradient(circle at 35% 35%, #ffffff, #ecf0f1, #bdc3c7);
+            color: #333;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- SCENE 1: THE RACK -->
+    <div id="rack-scene">
+        <div class="machine-container">
+            <div class="glass-overlay"></div>
+            <div class="rack" id="rack"></div>
+            <div class="bottom-section">
+                <div class="curve-track">
+                    <div class="glow-line"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCENE 2: THE DRUM WITH DROP ZONE -->
+    <div id="drum-scene">
+        <div class="drum-container" id="drum-container">
+            <div class="neon-ring"></div>
+            <div class="drum-glass"></div>
+
+            <div class="agitator">
+                <div class="agitator-arm" style="transform: rotate(0deg) translateY(-20px); height: 260px;"></div>
+                <div class="agitator-arm" style="transform: rotate(120deg) translateY(-20px); height: 260px;"></div>
+                <div class="agitator-arm" style="transform: rotate(240deg) translateY(-20px); height: 260px;"></div>
+            </div>
+
+            <div class="center-cap"></div>
+
+            <div id="drum-balls-container"></div>
+
+            <!-- DROP ZONE - Where the 5 selected balls appear -->
+            <!-- NEW MACHINE BASE - EXACT MATCH -->
+            <div class="machine-base">
+                <div class="base-wing left">
+                    <div class="ball-track">
+                        <div class="track-glow"></div>
+                        <!-- Balls fill from right to left inside flex-row-reverse -->
+                        <div id="drop-balls-left" style="display: flex; flex-direction: row-reverse; gap: 4px;"></div>
+                    </div>
+                </div>
+
+                <div class="center-structure">
+                    <div class="chute-opening"></div>
+                    <div class="center-pillar"></div>
+                </div>
+
+                <div class="base-wing right">
+                    <div class="ball-track">
+                        <div class="track-glow"></div>
+                        <div id="drop-balls-right" style="display: flex; gap: 4px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIG ---
+        const numColumns = 8;
+        const maxNumber = 59;
+        const ballRadius = 22;
+        const drumRadius = 250;
+        const drumCenter = { x: 300, y: 300 };
+
+        // --- DOM ELEMENTS ---
+        const rack = document.getElementById('rack');
+        const rackScene = document.getElementById('rack-scene');
+        const drumScene = document.getElementById('drum-scene');
+        const drumBallsContainer = document.getElementById('drum-balls-container');
+        const dropBallsLeft = document.getElementById('drop-balls-left');
+
+        // --- UTIL ---
+        function getColor(num) {
+            if (num <= 9) return 'white';
+            if (num <= 19) return 'blue';
+            if (num <= 29) return 'pink';
+            if (num <= 39) return 'green';
+            if (num <= 49) return 'yellow';
+            if (num <= 59) return 'purple';
+            return 'purple';
+        }
+
+        // --- RACK INITIALIZATION ---
+        let rackBalls = [];
+
+        for (let i = 1; i <= numColumns; i++) {
+            const col = document.createElement('div');
+            col.className = 'column';
+
+            let nums = [];
+            for (let n = i; n <= maxNumber; n += 8) nums.push(n);
+
+            nums.forEach(num => {
+                const ball = document.createElement('div');
+                ball.className = `ball ${getColor(num)}`;
+                ball.style.animation = `dropIn 0.8s ease-out backwards`;
+                ball.style.animationDelay = `${Math.random() * 0.5}s`;
+
+                const randomRot = Math.floor(Math.random() * 60) - 30;
+                ball.style.transform = `rotate(${randomRot}deg)`;
+
+                const span = document.createElement('span');
+                span.innerText = num;
+                span.style.transform = `rotate(${-randomRot * 0.5}deg)`;
+
+                ball.appendChild(span);
+                col.appendChild(ball);
+
+                rackBalls.push(num);
+            });
+            rack.appendChild(col);
+        }
+
+        // --- TRANSITION SEQUENCE ---
+        setTimeout(startDropSequence, 2000);
+
+        function startDropSequence() {
+            const balls = document.querySelectorAll('.ball');
+            balls.forEach((b) => {
+                setTimeout(() => {
+                    b.style.animation = `dropDown 1s ease-in forwards`;
+                }, Math.random() * 800);
+            });
+
+            setTimeout(() => {
+                rackScene.style.opacity = '0';
+                rackScene.style.transform = 'translateY(-50px) scale(0.95)';
+
+                setTimeout(() => {
+                    rackScene.style.display = 'none';
+                    initDrum();
+                }, 1000);
+            }, 1800);
+        }
+
+        // --- PHYSICS ENGINE ---
+        let physicsBalls = [];
+        let armAngle = 0;
+        const armSpeed = 1.5;
+        const armLength = 240;
+        const armWidth = 15;
+        let selectedBalls = [];
+
+        function initDrum() {
+            drumScene.style.display = 'flex';
+            void drumScene.offsetWidth;
+            drumScene.style.opacity = '1';
+
+            document.querySelector('.agitator').style.animation = 'none';
+
+            // Shuffle and spawn balls
+            let spawnedCount = 0;
+            const shuffled = [...rackBalls].sort(() => Math.random() - 0.5);
+
+            const spawnInterval = setInterval(() => {
+                if (spawnedCount >= shuffled.length) {
+                    clearInterval(spawnInterval);
+                    // After all balls are in, wait 5 seconds then select 5 balls for drop zone
+                    setTimeout(selectWinningBalls, 5000);
+                    return;
+                }
+                spawnBall(shuffled[spawnedCount]);
+                spawnedCount++;
+            }, 50);
+
+            requestAnimationFrame(updatePhysics);
+            requestAnimationFrame(renderLoop);
+        }
+
+        function spawnBall(num) {
+            const ballEl = document.createElement('div');
+            ballEl.className = `drum-ball ${getColor(num)}`;
+
+            const span = document.createElement('span');
+            span.innerText = num;
+            ballEl.appendChild(span);
+            drumBallsContainer.appendChild(ballEl);
+
+            const startX = drumCenter.x + (Math.random() - 0.5) * 50;
+            const startY = 50;
+
+            physicsBalls.push({
+                el: ballEl,
+                num: num,
+                x: startX,
+                y: startY,
+                vx: (Math.random() - 0.5) * 2,
+                vy: 0,
+                angle: 0,
+                vAngle: (Math.random() - 0.5) * 5,
+                radius: 22,
+                selected: false
+            });
+        }
+
+        function selectWinningBalls() {
+            // Randomly select 5 balls
+            const availableBalls = [...physicsBalls];
+            availableBalls.sort(() => Math.random() - 0.5);
+            selectedBalls = availableBalls.slice(0, 5);
+
+            selectedBalls.forEach((ball, index) => {
+                // Stagger the entire sequence for each ball
+                const delay = index * 2000; // 2 seconds between each ball being picked
+
+                setTimeout(() => {
+                    // 1. Fade out from drum
+                    ball.selected = true; // Logical flag if needed
+                    ball.el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                    ball.el.style.opacity = '0';
+                    ball.el.style.transform = 'scale(0.5)';
+
+                    // 2. Drop into zone and cleanup after transition
+                    setTimeout(() => {
+                        addBallToDropZone(ball.num, index);
+
+                        // Remove from physics/DOM
+                        if (ball.el && ball.el.parentNode) {
+                            ball.el.remove();
+                        }
+                        physicsBalls = physicsBalls.filter(b => b !== ball);
+                    }, 800);
+
+                }, delay);
+            });
+        }
+
+        function addBallToDropZone(num, index) {
+            const dropBall = document.createElement('div');
+            dropBall.className = `dropped-ball ${getColor(num)}`;
+            // dropBall.style.animationDelay = `${index * 0.2}s`; // Handled by JS timeout now
+
+            const span = document.createElement('span');
+            span.innerText = num;
+            dropBall.appendChild(span);
+
+            // Add to the left container as per new machine design
+            dropBallsLeft.appendChild(dropBall);
+        }
+
+        function updatePhysics() {
+            armAngle = (armAngle + armSpeed) % 360;
+            const armsRad = [
+                (armAngle * Math.PI) / 180,
+                ((armAngle + 120) * Math.PI) / 180,
+                ((armAngle + 240) * Math.PI) / 180
+            ];
+
+            const gravity = 0.2;
+            const friction = 0.98;
+            const wallRestitution = 0.6;
+
+            for (let i = 0; i < physicsBalls.length; i++) {
+                let b = physicsBalls[i];
+
+                b.vy += gravity;
+                b.vx *= friction;
+                b.vy *= friction;
+
+                const dx = b.x - drumCenter.x;
+                const dy = b.y - drumCenter.y;
+                const distCenter = Math.sqrt(dx * dx + dy * dy);
+                if (distCenter > 50) {
+                    b.vx += (-dy / distCenter) * 0.05;
+                    b.vy += (dx / distCenter) * 0.05;
+                }
+
+                // ARM COLLISIONS
+                armsRad.forEach(rad => {
+                    const armDirX = Math.cos(rad);
+                    const armDirY = Math.sin(rad);
+                    const bx = b.x - drumCenter.x;
+                    const by = b.y - drumCenter.y;
+                    const projection = bx * armDirX + by * armDirY;
+
+                    let closestX, closestY;
+                    if (projection < 0) {
+                        closestX = 0;
+                        closestY = 0;
+                    } else if (projection > armLength) {
+                        closestX = armLength * armDirX;
+                        closestY = armLength * armDirY;
+                    } else {
+                        closestX = projection * armDirX;
+                        closestY = projection * armDirY;
+                    }
+
+                    const distX = bx - closestX;
+                    const distY = by - closestY;
+                    const distSq = distX * distX + distY * distY;
+                    const minDist = b.radius + armWidth;
+
+                    if (distSq < minDist * minDist) {
+                        const dist = Math.sqrt(distSq);
+                        let nx = distX / dist;
+                        let ny = distY / dist;
+                        if (dist < 0.1) {
+                            nx = 1;
+                            ny = 0;
+                        }
+
+                        const r = Math.max(0, Math.min(projection, armLength));
+                        const armVelMag = r * (armSpeed * 0.01745) * 1.5;
+                        const tanX = -Math.sin(rad);
+                        const tanY = Math.cos(rad);
+
+                        const overlap = minDist - dist;
+                        b.x += nx * overlap;
+                        b.y += ny * overlap;
+
+                        b.vx += tanX * armVelMag * 0.8 + nx * 2;
+                        b.vy += tanY * armVelMag * 0.8 + ny * 2;
+                        b.vAngle += 5;
+                    }
+                });
+
+                b.x += b.vx;
+                b.y += b.vy;
+                b.angle += b.vAngle;
+                b.vAngle *= 0.95;
+
+                // Container Wall Collision
+                const ddx = b.x - drumCenter.x;
+                const ddy = b.y - drumCenter.y;
+                const dDist = Math.sqrt(ddx * ddx + ddy * ddy);
+
+                if (dDist > drumRadius - b.radius) {
+                    const angle = Math.atan2(ddy, ddx);
+                    const tx = drumCenter.x + Math.cos(angle) * (drumRadius - b.radius);
+                    const ty = drumCenter.y + Math.sin(angle) * (drumRadius - b.radius);
+
+                    b.x = tx;
+                    b.y = ty;
+
+                    const nx = Math.cos(angle);
+                    const ny = Math.sin(angle);
+                    const dot = b.vx * nx + b.vy * ny;
+
+                    b.vx = (b.vx - 2 * dot * nx) * wallRestitution;
+                    b.vy = (b.vy - 2 * dot * ny) * wallRestitution;
+
+                    b.vx += ny * 0.1;
+                    b.vy -= nx * 0.1;
+                }
+            }
+
+            // Ball-Ball Collisions
+            for (let i = 0; i < physicsBalls.length; i++) {
+                for (let j = i + 1; j < physicsBalls.length; j++) {
+                    const b1 = physicsBalls[i];
+                    const b2 = physicsBalls[j];
+
+                    const dx = b2.x - b1.x;
+                    const dy = b2.y - b1.y;
+                    const distSq = dx * dx + dy * dy;
+
+                    if (distSq < 1936 && distSq > 0) {
+                        const dist = Math.sqrt(distSq);
+                        const overlap = 44 - dist;
+                        const nx = dx / dist;
+                        const ny = dy / dist;
+
+                        const moveX = nx * overlap * 0.5;
+                        const moveY = ny * overlap * 0.5;
+                        b1.x -= moveX;
+                        b1.y -= moveY;
+                        b2.x += moveX;
+                        b2.y += moveY;
+
+                        const k = 0.5;
+                        const dvx = b2.vx - b1.vx;
+                        const dvy = b2.vy - b1.vy;
+                        const p = (nx * dvx + ny * dvy);
+
+                        if (p < 0) {
+                            const tx = nx * p * k;
+                            const ty = ny * p * k;
+                            b1.vx += tx;
+                            b1.vy += ty;
+                            b2.vx -= tx;
+                            b2.vy -= ty;
+                        }
+                    }
+                }
+            }
+
+            requestAnimationFrame(updatePhysics);
+        }
+
+        function renderLoop() {
+            const agitator = document.querySelector('.agitator');
+            if (agitator) agitator.style.transform = `rotate(${armAngle}deg)`;
+
+            for (let i = 0; i < physicsBalls.length; i++) {
+                const b = physicsBalls[i];
+                if (!b.selected) {
+                    b.el.style.left = (b.x - b.radius) + 'px';
+                    b.el.style.top = (b.y - b.radius) + 'px';
+                    b.el.style.transform = `rotate(${b.angle}deg)`;
+                }
+            }
+            requestAnimationFrame(renderLoop);
+        }
+    </script>
+</body>
+
+</html>
