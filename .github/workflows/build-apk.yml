@@ -1,0 +1,102 @@
+name: Build Flutter APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      zip_url:
+        description: 'URL of the source code zip file'
+        required: true
+      build_mode:
+        description: 'Build mode (release, debug)'
+        required: false
+        default: 'release'
+      target:
+        description: 'Target platform (fat, split, etc)'
+        required: false
+        default: 'fat'
+      build_id:
+        description: 'Unique Build ID for verification'
+        required: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Template Repo
+        uses: actions/checkout@v4
+
+      - name: Download and Extract Source Zip
+        run: |
+          echo "Downloading source zip from: ${{ github.event.inputs.zip_url }}"
+          curl -L -o source.zip "${{ github.event.inputs.zip_url }}"
+          
+          # Verify it is a valid zip file
+          if ! unzip -t source.zip > /dev/null; then
+            echo "Error: Downloaded file is not a valid zip archive or download failed."
+            exit 1
+          fi
+          
+          echo "Extracting source code..."
+          unzip -o source.zip -d .
+          rm source.zip
+          echo "Source code successfully extracted!"
+
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Get Dependencies
+        run: |
+          # Check if we are in the root or frontend folder
+          if [ -f "pubspec.yaml" ]; then
+            flutter pub get
+          elif [ -d "frontend" ] && [ -f "frontend/pubspec.yaml" ]; then
+            cd frontend
+            flutter pub get
+          else
+            echo "Error: pubspec.yaml not found!"
+            exit 1
+          fi
+
+      - name: Build APK
+        run: |
+          # Determine directory
+          BUILD_DIR="."
+          if [ -d "frontend" ] && [ -f "frontend/pubspec.yaml" ]; then
+            BUILD_DIR="frontend"
+          fi
+          
+          BUILD_MODE="${{ github.event.inputs.build_mode }}"
+          TARGET="${{ github.event.inputs.target }}"
+          
+          CMD="flutter build apk --$BUILD_MODE"
+          if [ "$TARGET" = "split" ]; then
+            CMD="$CMD --split-per-abi"
+          elif [ "$TARGET" = "arm64-v8a" ]; then
+            CMD="$CMD --target-platform android-arm64"
+          elif [ "$TARGET" = "armeabi-v7a" ]; then
+            CMD="$CMD --target-platform android-arm"
+          fi
+          
+          echo "Running build in $BUILD_DIR..."
+          cd $BUILD_DIR
+          echo "Executing: $CMD"
+          $CMD
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.inputs.build_id || 'flutter-apk' }}
+          path: |
+            **/build/app/outputs/flutter-apk/*.apk
+            **/build/app/outputs/apk/**/*.apk
+          if-no-files-found: error
