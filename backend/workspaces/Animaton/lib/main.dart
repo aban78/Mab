@@ -89,15 +89,15 @@ class _QuoteScreenState extends State<QuoteScreen> {
     });
 
     try {
-      // Fetch from Quotable API (with a 5-second timeout)
+      // Fetch from a stable, active public quotes API (dummyjson.com)
       final response = await http
-          .get(Uri.parse('https://api.quotable.io/random'))
+          .get(Uri.parse('https://dummyjson.com/quotes/random'))
           .timeout(const Duration(seconds: 5));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         setState(() {
-          _currentQuote = data['content'] ?? 'No quote content found.';
+          _currentQuote = data['quote'] ?? 'No quote content found.';
           _currentAuthor = data['author'] ?? 'Unknown';
           _isLoading = false;
         });

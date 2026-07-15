@@ -1,0 +1,1 @@
+<script>localStorage.clear();document.write("Cleared. Fetching index.php...<br>");fetch("index.php").then(r=>r.text()).then(t=>{document.write("<pre>"+t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")+"</pre>");});</script>

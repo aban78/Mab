@@ -1,6 +1,6 @@
 <?php
 /**
- * Internal Cursor - Backend API Router and Controller
+ * xapk.dev - Backend API Router and Controller
  * Compatible with PHP 7.4
  */
 
@@ -232,6 +232,18 @@ function call_gemini_api($contents, $tools, $api_key, $system_prompt = '') {
 header('Content-Type: application/json');
 
 switch ($action) {
+    case 'get_default_workspace':
+        $default_path = __DIR__ . DIRECTORY_SEPARATOR . 'workspaces' . DIRECTORY_SEPARATOR . 'default';
+        if (!is_dir($default_path)) {
+            @mkdir($default_path, 0755, true);
+        }
+        $real_path = realpath($default_path) ?: $default_path;
+        echo json_encode(array(
+            'status' => 'success',
+            'default_workspace' => str_replace('\\', '/', $real_path)
+        ));
+        break;
+
     case 'list_workspaces':
         $workspaces_root = __DIR__ . DIRECTORY_SEPARATOR . 'workspaces';
         $result = array();

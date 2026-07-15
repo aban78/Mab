@@ -1,0 +1,5 @@
+PHP 8.4.1 (cli) (built: Nov 20 2024 11:13:29) (ZTS Visual C++ 2022 x64)
+Copyright (c) The PHP Group
+Zend Engine v4.4.1, Copyright (c) Zend Technologies
+
+[Process exited with code 0]

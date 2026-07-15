@@ -370,29 +370,37 @@ function run_github_build($mode, $target, $frontend_dir, $output_file, $status_f
     $zip_filename = $build_id . '.zip';
     $zip_path = $uploads_dir . '/' . $zip_filename;
     
-    file_put_contents($output_file, "Creating source code archive (zip)...\n", FILE_APPEND);
+    file_put_contents($output_file, "Creating source code archive...\n", FILE_APPEND);
     
     if (!create_source_zip($frontend_dir, $zip_path)) {
-        file_put_contents($output_file, "Error: Failed to create source zip archive. Make sure ZipArchive is enabled.\n", FILE_APPEND);
-        @file_put_contents($status_file, json_encode(['status' => 'error', 'error' => 'Failed to create zip']));
+        file_put_contents($output_file, "Error: Failed to create source archive. Make sure ZipArchive is enabled.\n", FILE_APPEND);
+        @file_put_contents($status_file, json_encode(['status' => 'error', 'error' => 'Failed to create archive']));
         exit();
     }
     
-    global $config;
-    $base_url = isset($config['shared_hosting_url']) ? $config['shared_hosting_url'] : SHARED_HOSTING_URL;
-    $base_url = rtrim($base_url, '/') . '/';
-    $zip_url = $base_url . 'uploads/' . $zip_filename;
+    file_put_contents($output_file, "Preparing source code for cloud compilation...\n", FILE_APPEND);
+    $zip_url = upload_to_tmpfiles($zip_path);
+    if (!$zip_url) {
+        // Fallback to direct URL if upload fails
+        global $config;
+        $base_url = isset($config['shared_hosting_url']) ? $config['shared_hosting_url'] : SHARED_HOSTING_URL;
+        $base_url = rtrim($base_url, '/') . '/';
+        $zip_url = $base_url . 'uploads/' . $zip_filename;
+        file_put_contents($output_file, "Warning: Temporary upload failed. Falling back to direct URL.\n", FILE_APPEND);
+    } else {
+        file_put_contents($output_file, "Source code prepared successfully.\n", FILE_APPEND);
+    }
     
-    file_put_contents($output_file, "Triggering GitHub Actions build...\n", FILE_APPEND);
+    file_put_contents($output_file, "Initiating cloud build process...\n", FILE_APPEND);
     
     $repo = GITHUB_REPO;
     $token = GITHUB_TOKEN;
     $workflow = GITHUB_WORKFLOW;
     
     if (empty($token) || $token === 'YOUR_GITHUB_PERSONAL_ACCESS_TOKEN' || empty($repo) || $repo === 'YOUR_GITHUB_USERNAME/YOUR_REPO_NAME') {
-        file_put_contents($output_file, "Error: GitHub Repo or Personal Access Token is not configured in config.php.\nPlease set GITHUB_REPO and GITHUB_TOKEN.\n", FILE_APPEND);
+        file_put_contents($output_file, "Error: Cloud build credentials are not configured in config.php.\n", FILE_APPEND);
         @unlink($zip_path);
-        @file_put_contents($status_file, json_encode(['status' => 'error', 'error' => 'GitHub credentials not configured']));
+        @file_put_contents($status_file, json_encode(['status' => 'error', 'error' => 'Cloud credentials not configured']));
         exit();
     }
     
@@ -421,19 +429,19 @@ function run_github_build($mode, $target, $frontend_dir, $output_file, $status_f
         'status' => 'running',
         'pid' => getmypid(),
         'start_time' => time(),
-        'current_step' => 'triggering_github'
+        'current_step' => 'triggering_cloud'
     ]));
     
     $res = github_api_request('POST', $dispatch_url, $token, $dispatch_data);
     
     if ($res['code'] !== 204) {
-        file_put_contents($output_file, "Error triggering GitHub Action. HTTP Code: " . $res['code'] . "\nResponse: " . json_encode($res['body']) . "\n", FILE_APPEND);
+        file_put_contents($output_file, "Error triggering cloud build. HTTP Code: " . $res['code'] . "\n", FILE_APPEND);
         @unlink($zip_path);
-        @file_put_contents($status_file, json_encode(['status' => 'error', 'error' => 'Failed to trigger GitHub Action']));
+        @file_put_contents($status_file, json_encode(['status' => 'error', 'error' => 'Failed to trigger cloud build']));
         exit();
     }
     
-    file_put_contents($output_file, "GitHub Action triggered successfully. Waiting for runner to start...\n", FILE_APPEND);
+    file_put_contents($output_file, "Cloud build initiated. Waiting for runner to start...\n", FILE_APPEND);
     
     // Find the run ID
     $run_id = null;
@@ -459,19 +467,19 @@ function run_github_build($mode, $target, $frontend_dir, $output_file, $status_f
     }
     
     if (!$run_id) {
-        file_put_contents($output_file, "Error: Could not find the triggered GitHub Actions run. Please check your workflow file and repository.\n", FILE_APPEND);
+        file_put_contents($output_file, "Error: Could not find the triggered build run. Please check configuration.\n", FILE_APPEND);
         @unlink($zip_path);
-        @file_put_contents($status_file, json_encode(['status' => 'error', 'error' => 'Workflow run not found']));
+        @file_put_contents($status_file, json_encode(['status' => 'error', 'error' => 'Build run not found']));
         exit();
     }
     
-    file_put_contents($output_file, "Found workflow run ID: $run_id. Monitoring build...\n", FILE_APPEND);
+    file_put_contents($output_file, "Build runner connected. Monitoring build status...\n", FILE_APPEND);
     
     @file_put_contents($status_file, json_encode([
         'status' => 'running',
         'pid' => getmypid(),
         'start_time' => time(),
-        'current_step' => 'github_building',
+        'current_step' => 'cloud_building',
         'run_id' => $run_id
     ]));
     
@@ -484,7 +492,7 @@ function run_github_build($mode, $target, $frontend_dir, $output_file, $status_f
         if (file_exists($control_file)) {
             $control = json_decode(file_get_contents($control_file), true);
             if ($control && isset($control['action']) && $control['action'] === 'stop') {
-                file_put_contents($output_file, "\n[Cancelling GitHub Actions build...]\n", FILE_APPEND);
+                file_put_contents($output_file, "\n[Cancelling cloud build...]\n", FILE_APPEND);
                 
                 $cancel_url = "https://api.github.com/repos/$repo/actions/runs/$run_id/cancel";
                 github_api_request('POST', $cancel_url, $token);
@@ -520,15 +528,15 @@ function run_github_build($mode, $target, $frontend_dir, $output_file, $status_f
     @unlink($zip_path);
     
     if ($conclusion !== 'success') {
-        file_put_contents($output_file, "\n[GitHub Actions build failed with conclusion: $conclusion]\n", FILE_APPEND);
+        file_put_contents($output_file, "\n[Cloud build failed with conclusion: $conclusion]\n", FILE_APPEND);
         @file_put_contents($status_file, json_encode([
             'status' => 'error',
-            'error' => "GitHub build failed: $conclusion"
+            'error' => "Cloud build failed: $conclusion"
         ]));
         exit();
     }
     
-    file_put_contents($output_file, "Build successful! Fetching compilation artifact...\n", FILE_APPEND);
+    file_put_contents($output_file, "Build successful! Retrieving compilation artifact...\n", FILE_APPEND);
     
     // Find the artifact
     $artifacts_url = "https://api.github.com/repos/$repo/actions/runs/$run_id/artifacts";
@@ -549,12 +557,12 @@ function run_github_build($mode, $target, $frontend_dir, $output_file, $status_f
     }
     
     if (!$artifact_id) {
-        file_put_contents($output_file, "Error: Could not find build artifact on GitHub.\n", FILE_APPEND);
+        file_put_contents($output_file, "Error: Could not find build artifact.\n", FILE_APPEND);
         @file_put_contents($status_file, json_encode(['status' => 'error', 'error' => 'Artifact not found']));
         exit();
     }
     
-    file_put_contents($output_file, "Downloading APK artifact from GitHub...\n", FILE_APPEND);
+    file_put_contents($output_file, "Downloading compiled build artifact...\n", FILE_APPEND);
     
     $artifact_zip_path = $uploads_dir . '/artifact_' . $build_id . '.zip';
     $fp = fopen($artifact_zip_path, 'w+');
@@ -688,5 +696,52 @@ function github_api_request($method, $url, $token, $data = null) {
     curl_close($ch);
     
     return array('code' => $http_code, 'body' => json_decode($response, true), 'raw' => $response);
+}
+
+function upload_to_tmpfiles($file_path) {
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, 'https://tmpfiles.org/api/v1/upload');
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    
+    if (class_exists('CURLFile')) {
+        $file = new CURLFile($file_path);
+    } else {
+        $file = '@' . $file_path;
+    }
+    
+    curl_setopt($ch, CURLOPT_POSTFIELDS, array('file' => $file));
+    
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($http_code === 200) {
+        $data = json_decode($response, true);
+        if (isset($data['data']['url'])) {
+            $landing_url = $data['data']['url'];
+            
+            // tmpfiles.org now redirects /dl/ID/filename requests to the landing page unless a session token is present.
+            // We fetch the landing page HTML and extract the actual direct download URL containing the generated token.
+            $ch2 = curl_init();
+            curl_setopt($ch2, CURLOPT_URL, $landing_url);
+            curl_setopt($ch2, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch2, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch2, CURLOPT_FOLLOWLOCATION, true);
+            $html = curl_exec($ch2);
+            curl_close($ch2);
+            
+            if ($html) {
+                if (preg_match('/href="([^"]+tmpfiles\.org\/dl\/[^"]+)"/', $html, $matches)) {
+                    return $matches[1];
+                }
+            }
+            
+            // Fallback to standard URL modification if HTML parsing fails
+            return str_replace('tmpfiles.org/', 'tmpfiles.org/dl/', $landing_url);
+        }
+    }
+    return null;
 }
 ?>

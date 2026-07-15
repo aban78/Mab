@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Internal Cursor IDE</title>
+    <title>xapk.dev IDE</title>
     <!-- Google Fonts Outfit & JetBrains Mono -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <!-- FontAwesome Icons -->
@@ -20,9 +20,9 @@
             --border-color: rgba(255, 255, 255, 0.08);
             --text-primary: #f3f4f6;
             --text-secondary: #9ca3af;
-            --accent-primary: #8b5cf6; /* Purple indicator */
-            --accent-secondary: #ec4899; /* Pink */
-            --accent-glow: rgba(139, 92, 246, 0.15);
+            --accent-primary: #10F294; /* Cyber green indicator */
+            --accent-secondary: #059669; /* Emerald green */
+            --accent-glow: rgba(16, 242, 148, 0.15);
             
             --gemini-color: #3b82f6;
             --claude-color: #f97316;
@@ -815,8 +815,8 @@
     <!-- Top Navigation Bar -->
     <header class="navbar">
         <div class="brand">
-            <i class="fa-solid fa-wand-magic-sparkles"></i>
-            <span>Internal Cursor</span>
+            <img src="logo.png" alt="xapk.dev" style="-webkit-text-fill-color: initial; height: 28px; width: auto; object-fit: contain;">
+            <span>xapk.dev</span>
         </div>
         
         <div class="nav-actions">
@@ -890,7 +890,7 @@
                     </div>
                 </div>
                 <div class="terminal-body" id="terminal-body">
-                    <div class="terminal-output" id="terminal-output">Welcome to Internal Cursor Terminal! Type a command below and press Enter (e.g. dir, php -v, flutter devices)...</div>
+                    <div class="terminal-output" id="terminal-output">Welcome to xapk.dev Terminal! Type a command below and press Enter (e.g. dir, php -v, flutter devices)...</div>
                     <div class="terminal-input-line">
                         <span class="terminal-prompt">&gt;</span>
                         <input type="text" class="terminal-cmd-input" id="terminal-cmd-input" placeholder="Type command here..." onkeydown="handleTerminalInput(event)">
@@ -923,9 +923,7 @@
                         <i class="fa-solid fa-paper-plane"></i>
                     </button>
                 </div>
-                <div class="guide-banner" id="guide-banner">
-                    Default model: Gemini (unlimited flat fee).
-                </div>
+                <div class="guide-banner" id="guide-banner"></div>
             </div>
         </section>
 
@@ -1098,12 +1096,12 @@
 
     <!-- First-Time Welcome Overlay (Workspace Required) -->
     <div class="modal-overlay" id="first-time-overlay" style="z-index: 1000; backdrop-filter: blur(15px); background: rgba(11, 15, 25, 0.95); display: none; align-items: center; justify-content: center;">
-        <div class="modal" style="width: 500px; border: 1px solid rgba(139, 92, 246, 0.25); background: var(--bg-surface-solid); box-shadow: 0 0 30px rgba(139, 92, 246, 0.15);">
+        <div class="modal" style="width: 500px; border: 1px solid var(--accent-primary); background: var(--bg-surface-solid); box-shadow: 0 0 30px var(--accent-glow);">
             <div style="text-align: center; margin-bottom: 15px;">
-                <div style="font-size: 3rem; background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; display: inline-block;">
-                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                <div style="font-size: 3rem; display: inline-block;">
+                    <img src="logo.png" alt="xapk.dev" style="-webkit-text-fill-color: initial; height: 60px; width: auto; object-fit: contain;">
                 </div>
-                <h2 style="font-weight: 700; margin-top: 10px; margin-bottom: 5px; background: linear-gradient(135deg, #fff, var(--text-secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Welcome to Internal Cursor</h2>
+                <h2 style="font-weight: 700; margin-top: 10px; margin-bottom: 5px; background: linear-gradient(135deg, #fff, var(--text-secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Welcome to xapk.dev</h2>
                 <p style="color: var(--text-secondary); font-size: 0.95rem; line-height: 1.5; padding: 0 10px; margin: 0 0 15px 0;">
                     To start coding, please upload a project folder.
                 </p>
@@ -1220,7 +1218,7 @@
                             
                             activeFilePath = null;
                             document.getElementById('active-file-name').innerText = "No file open";
-                            editor.setValue(`<?php\n// Select a file from the explorer or create a new file to get started!\necho "Welcome to Internal Cursor!";`);
+                            editor.setValue(`<?php\n// Select a file from the explorer or create a new file to get started!\necho "Welcome to xapk.dev!";`);
                             
                             setTimeout(() => {
                                 loadFileTree();
@@ -1248,15 +1246,18 @@
             xhr.send(formData);
         }
 
-        // Check if workspace is set, otherwise force first-time overlay
+        // Check if workspace is set, do not force welcome overlay anymore
         window.addEventListener('DOMContentLoaded', () => {
             const overlay = document.getElementById('first-time-overlay');
-            if (!activeWorkspacePath) {
-                overlay.style.display = 'flex';
-                overlay.classList.add('open');
-            } else {
+            if (overlay) {
                 overlay.style.display = 'none';
                 overlay.classList.remove('open');
+            }
+            if (!activeWorkspacePath) {
+                const rootTree = document.getElementById('file-tree-root');
+                if (rootTree) {
+                    rootTree.innerHTML = `<li style="padding: 10px; color: var(--text-secondary); text-align: center; font-size: 0.85rem;">No project folder uploaded. Click 'Open Folder' to upload and start coding!</li>`;
+                }
             }
         });
 
@@ -1311,7 +1312,7 @@
         require(['vs/editor/editor.main'], function() {
             // Register themes or settings
             editor = monaco.editor.create(document.getElementById('editor-target'), {
-                value: `<?php\n// Select a file from the explorer or create a new file to get started!\necho "Welcome to Internal Cursor!";`,
+                value: `<?php\n// Select a file from the explorer or create a new file to get started!\necho "Welcome to xapk.dev!";`,
                 language: 'php',
                 theme: 'vs-dark',
                 automaticLayout: true,
@@ -1360,7 +1361,7 @@
             const model = document.getElementById('model-select').value;
             const banner = document.getElementById('guide-banner');
             if (model === 'gemini') {
-                banner.innerHTML = "Default model: Gemini (unlimited flat fee).";
+                banner.innerHTML = "";
             } else if (model === 'claude') {
                 banner.innerHTML = "<span style='color: var(--claude-color)'><i class='fa-solid fa-triangle-exclamation'></i> Advanced usage: Ask Alan for permission.</span>";
             } else if (model === 'chatgpt') {
@@ -1631,7 +1632,7 @@
             let currentCodeSelection = editor.getSelection();
             let selectedText = editor.getModel().getValueInRange(currentCodeSelection);
             
-            let systemPrompt = "You are an AI programming assistant built into an IDE called 'Internal Cursor'. "
+            let systemPrompt = "You are an AI programming assistant built into an IDE called 'xapk.dev'. "
                              + "You help developers write code, rewrite sections, fix bugs, and refactor. "
                              + "Always respond with code blocks when providing code snippets, specifying the language correctly (e.g. ```php or ```dart).\n";
             
