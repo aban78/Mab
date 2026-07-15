@@ -402,6 +402,7 @@ function run_github_build($mode, $target, $frontend_dir, $output_file, $status_f
         $clean_name = "app_" . time();
     }
     $package_name = "com.example." . $clean_name;
+    $app_name = $workspace_name; // E.g. "Animaton"
 
     $dispatch_url = "https://api.github.com/repos/$repo/actions/workflows/$workflow/dispatches";
     $dispatch_data = array(
@@ -411,7 +412,8 @@ function run_github_build($mode, $target, $frontend_dir, $output_file, $status_f
             'build_mode' => $mode,
             'target' => $target,
             'build_id' => $build_id,
-            'package_name' => $package_name
+            'package_name' => $package_name,
+            'app_name' => $app_name
         )
     );
     

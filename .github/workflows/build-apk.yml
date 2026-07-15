@@ -20,6 +20,9 @@ on:
       package_name:
         description: 'Custom Android Package Name (Application ID)'
         required: false
+      app_name:
+        description: 'Custom App Name (Label)'
+        required: false
 
 jobs:
   build:
@@ -51,25 +54,32 @@ jobs:
           rm source.zip
           echo "Source code successfully extracted!"
 
-      - name: Customize Package Name
+      - name: Customize App Identity
         run: |
           PACKAGE_NAME="${{ github.event.inputs.package_name }}"
-          if [ -n "$PACKAGE_NAME" ]; then
-            echo "Setting Application ID to $PACKAGE_NAME"
-            DIRS=". frontend"
-            for dir in $DIRS; do
-              if [ -d "$dir" ]; then
+          APP_NAME="${{ github.event.inputs.app_name }}"
+          DIRS=". frontend"
+          for dir in $DIRS; do
+            if [ -d "$dir" ]; then
+              # Update Package ID (Application ID)
+              if [ -n "$PACKAGE_NAME" ]; then
+                echo "Setting Application ID to $PACKAGE_NAME in $dir"
                 if [ -f "$dir/android/app/build.gradle.kts" ]; then
-                  echo "Updating $dir/android/app/build.gradle.kts"
                   sed -i "s/applicationId = \".*\"/applicationId = \"$PACKAGE_NAME\"/g" "$dir/android/app/build.gradle.kts"
                 fi
                 if [ -f "$dir/android/app/build.gradle" ]; then
-                  echo "Updating $dir/android/app/build.gradle"
                   sed -i "s/applicationId \".*\"/applicationId \"$PACKAGE_NAME\"/g" "$dir/android/app/build.gradle"
                 fi
               fi
-            done
-          fi
+              # Update App Name (Label)
+              if [ -n "$APP_NAME" ]; then
+                echo "Setting App Label to $APP_NAME in $dir"
+                if [ -f "$dir/android/app/src/main/AndroidManifest.xml" ]; then
+                  sed -i "s/android:label=\"[^\"]*\"/android:label=\"$APP_NAME\"/g" "$dir/android/app/src/main/AndroidManifest.xml"
+                fi
+              fi
+            fi
+          done
 
       - name: Set up Java
         uses: actions/setup-java@v3
